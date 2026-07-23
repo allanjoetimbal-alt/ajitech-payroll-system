@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AJITECH Payroll System v7.4</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { font-family: 'Inter', sans-serif; background: #0f0f0f; }
+.card { background: #1a1a1a; border: 1px solid #2a2a2a; }
+.btn-primary { background: linear-gradient(135deg, #f97316, #ea580c); }
+.btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.btn-warning { background: linear-gradient(135deg, #eab308, #ca8a04); }
+.btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.kiosk-btn { transition: all 0.2s; }
+.kiosk-btn:active { transform: scale(0.95); }
+input, select { background: #262626; border: 1px solid #3a3a3a; color: white; }
+.holiday-row { background: #3a1f1f; }
+</style>
+</head>
+<body class="text-gray-200">
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-900 via-black to-black">
+  <div class="card p-8 rounded-2xl shadow-2xl w-96">
+    <h1 class="text-3xl font-bold text-center mb-2 text-orange-500">AJITECH</h1>
+    <p class="text-center text-gray-400 mb-6">Payroll System v7.4</p>
+    <select id="role" class="w-full p-3 rounded-lg mb-4 text-white">
+      <option value="employee">Employee - Time In/Out</option>
+      <option value="admin">Admin - Payroll</option>
+    </select>
+    <input type="password" id="password" placeholder="Password" class="w-full p-3 rounded-lg mb-4">
+    <button onclick="handleLogin()" class="w-full btn-primary text-white p-3 rounded-lg font-bold">Login</button>
+  </div>
+</div>
+
+<!-- EMPLOYEE SCREEN -->
+<div id="employeeScreen" class="hidden p-4">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold text-orange-500">Time In / Time Out</h1>
+    <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
+  </div>
+  <div class="card p-6 rounded-2xl shadow-lg">
+    <select id="employeeSelect" class="w-full p-3 rounded-lg mb-4 text-lg"></select>
+    <select id="shiftSelect" class="w-full p-3 rounded-lg mb-4 text-lg">
+      <option value="Morning">Morning Shift</option>
+      <option value="Afternoon">Afternoon Shift</option>
+      <option value="Night">Night Shift</option>
+      <option value="OT">Overtime</option>
+    </select>
+    <div class="grid grid-cols-2 gap-4">
+      <button onclick="timeIn()" class="kiosk-btn btn-success text-white p-8 rounded-2xl text-2xl font-bold">TIME IN</button>
+      <button onclick="timeOut()" class="kiosk-btn btn-warning text-white p-8 rounded-2xl text-2xl font-bold">TIME OUT</button>
+    </div>
+    <p id="timeStatus" class="text-center mt-4 text-gray-400"></p>
+    <p id="gpsStatus" class="text-center text-xs text-gray-500"></p>
+  </div>
+</div>
+
+<!-- ADMIN SCREEN -->
+<div id="adminScreen" class="hidden p-4">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold text-orange-500">Admin Dashboard v7.4</h1>
+    <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
+  </div>
+
+  <!-- ON DUTY CARD -->
+  <div class="card p-4 rounded-2xl shadow mb-4 border-green-900">
+    <h2 class="font-bold mb-2 text-green-400">🟢 ON DUTY NOW</h2>
+    <div id="activeEmployees" class="text-sm space-y-2">
+      <p class="text-gray-500">Walang naka-duty ngayon</p>
+    </div>
+  </div>
+
+  <div class="card p-4 rounded-2xl mb-4 border-orange-900">
+    <div class="flex gap-2 flex-wrap mb-3">
+      <select id="cutoff" class="p-2 rounded-lg"><option value="1-15">1-15</option><option value="16-30">16-30</option></select>
+      <button onclick="saveSettings()" class="btn-success text-white px-4 py-2 rounded-lg font-semibold">Save</button>
+    </div>
+    <button onclick="changeAdminPass()" class="btn-primary text-white px-4 py-2 rounded-lg font-semibold">Change Admin Password</button>
+  </div>
+
+  <div class="card p-4 rounded-2xl shadow mb-4">
+    <h2 class="font-bold mb-2 text-orange-400">Add Employee</h2>
+    <div class="flex gap-2 flex-wrap">
+      <input type="text" id="empName" placeholder="Name" class="p-2 rounded-lg">
+      <input type="number" id="empRate" placeholder="Daily Rate" class="p-2 rounded-lg w-32">
+      <input type="number" id="empOT" placeholder="OT Rate/Hr" class="p-2 rounded-lg w-32">
+      <input type="password" id="empPass" placeholder="Password" class="p-2 rounded-lg w-32" value="1234">
+      <button onclick="addEmployee()" class="btn-success text-white px-4 py-2 rounded-lg font-semibold">Add</button>
+    </div>
+  </div>
+
+  <div class="card p-4 rounded-2xl shadow mb-4">
+    <h2 class="font-bold mb-2 text-orange-400">Add Holiday</h2>
+    <div class="flex gap-2 flex-wrap">
+      <input type="date" id="holDate" class="p-2 rounded-lg">
+      <input type="text" id="holName" placeholder="Holiday Name" class="p-2 rounded-lg flex-1">
+      <input type="number" id="holRate" placeholder="Multiplier" class="p-2 rounded-lg w-40" value="2">
+      <button onclick="addHoliday()" class="btn-danger text-white px-4 py-2 rounded-lg font-semibold">Add</button>
+    </div>
+    <p class="text-xs text-gray-400 mt-1">2 = Double, 1.3 = 30%</p>
+    <div id="holList" class="mt-2 text-sm"></div>
+  </div>
+
+  <div class="card p-4 rounded-2xl shadow mb-4">
+    <h2 class="font-bold mb-2 text-orange-400">DTR Records</h2>
+    <button onclick="exportCSV()" class="btn-warning text-white px-4 py-2 rounded-lg mb-2 font-semibold">Export CSV</button>
+    <button onclick="computePayroll()" class="btn-primary text-white px-4 py-2 rounded-lg mb-2 ml-2 font-semibold">Compute Payroll</button>
+    <div id="payrollResult" class="mt-2 text-sm"></div>
+    <div class="overflow-x-auto mt-2">
+      <table class="w-full text-sm">
+        <thead><tr class="bg-[#262626] text-orange-400"><td class="p-2">Date</td><td>Employee</td><td>Shift</td><td>Time In</td><td>Time Out</td><td>GPS</td><td>Type</td><td>Hours</td></tr></thead>
+        <tbody id="dtrTable" class="text-gray-300"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card p-4 rounded-2xl shadow">
+    <h2 class="font-bold mb-2 text-orange-400">Employee List</h2>
+    <table class="w-full text-sm">
+      <thead><tr class="bg-[#262626] text-orange-400"><td class="p-2">Name</td><td>Rate</td><td>OT Rate</td><td>Password</td><td>Action</td></tr></thead>
+      <tbody id="empTable" class="text-gray-300"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let currentRole = '';
+let currentEmpId = '';
+function getEmployees() { return JSON.parse(localStorage.getItem('employees') || '[]'); }
+function getRecords() { return JSON.parse(localStorage.getItem('dtrRecords') || '[]'); }
+function getHolidays() { return JSON.parse(localStorage.getItem('holidays') || '[]'); }
+function getSettings() { return JSON.parse(localStorage.getItem('settings') || '{"cutoff":"1-15"}'); }
+function saveEmployees(data) { localStorage.setItem('employees', JSON.stringify(data)); }
+function saveRecords(data) { localStorage.setItem('dtrRecords', JSON.stringify(data)); }
+function saveHolidays(data) { localStorage.setItem('holidays', JSON.stringify(data)); }
+function saveSettings() { const s = {cutoff: document.getElementById('cutoff').value}; localStorage.setItem('settings', JSON.stringify(s)); alert('Settings Saved!'); }
+
+function computeDeductions(gross) {
+  let sss = gross * 0.05; if(sss > 1125) sss = 1125;
+  let phil = gross * 0.05;
+  let pagibig = gross * 0.02; if(pagibig > 200) pagibig = 200;
+  return {sss: sss.toFixed(2), phil: phil.toFixed(2), pagibig: pagibig.toFixed(2), total: (sss+phil+pagibig).toFixed(2)};
+}
+
+function getGPS(callback) {
+  if(navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => { callback(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`); }, () => callback('GPS Off'));
+  } else { callback('No GPS'); }
+}
+
+function isHoliday(dateStr) { return getHolidays().find(h => new Date(h.date).toLocaleDateString() === new Date(dateStr).toLocaleDateString()); }
+function inCutoff(dateStr) { const s = getSettings(); const d = new Date(dateStr); const day = d.getDate(); return s.cutoff === '1-15'? day >=1 && day <=15 : day >=16; }
+
+document.getElementById('role').onchange = e => {
+  document.getElementById('password').placeholder = e.target.value === 'admin'? 'Admin Password' : 'Employee Password';
+}
+
+function handleLogin() {
+  const role = document.getElementById('role').value;
+  const pass = document.getElementById('password').value;
+  const savedAdminPass = localStorage.getItem('adminPass') || 'admin123';
+  if(role === 'admin') {
+    if(pass === savedAdminPass) {
+      currentRole = 'admin';
+      localStorage.setItem('loggedInRole', 'admin'); // REMEMBER
+      showAdmin();
+    }
+    else { alert('Mali password!'); }
+  } else {
+    const emp = getEmployees().find(e => e.password === pass);
+    if(emp) {
+      currentRole = 'employee';
+      currentEmpId = emp.id;
+      localStorage.setItem('loggedInRole', 'employee'); // REMEMBER
+      localStorage.setItem('loggedInEmpId', emp.id); // REMEMBER
+      showEmployee();
+    }
+    else { alert('Mali password!'); }
+  }
+}
+
+function logout() {
+  localStorage.removeItem('loggedInRole'); // BURAHIN PAG LOGOUT
+  localStorage.removeItem('loggedInEmpId'); // BURAHIN PAG LOGOUT
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('employeeScreen').classList.add('hidden');
+  document.getElementById('adminScreen').classList.add('hidden');
+  document.getElementById('password').value = '';
+}
+
+function showEmployee() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('employeeScreen').classList.remove('hidden');
+  renderEmployeeSelect();
+}
+
+function renderEmployeeSelect() {
+  const select = document.getElementById('employeeSelect');
+  select.innerHTML = getEmployees().map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  select.value = currentEmpId;
+}
+
+function timeIn() {
+  const id = document.getElementById('employeeSelect').value;
+  const shift = document.getElementById('shiftSelect').value;
+  const now = new Date();
+  getGPS(gps => {
+    const records = getRecords();
+    records.push({id: Date.now(), employeeId: id, shift: shift, date: now.toLocaleDateString(), timeIn: now.toLocaleTimeString(), timeOut: '', gpsIn: gps, gpsOut: ''});
+    saveRecords(records);
+    document.getElementById('timeStatus').innerText = `✅ Time In: ${now.toLocaleTimeString()} - ${shift}`;
+    document.getElementById('gpsStatus').innerText = `GPS: ${gps}`;
+    renderActiveEmployees();
+  });
+}
+
+function timeOut() {
+  const id = document.getElementById('employeeSelect').value;
+  const now = new Date();
+  getGPS(gps => {
+    const records = getRecords();
+    const last = records.reverse().find(r => r.employeeId === id &&!r.timeOut);
+    if(last) {
+      last.timeOut = now.toLocaleTimeString();
+      last.gpsOut = gps;
+      saveRecords(records.reverse());
+    }
+    document.getElementById('timeStatus').innerText = `✅ Time Out: ${now.toLocaleTimeString()}`;
+    document.getElementById('gpsStatus').innerText = `GPS: ${gps}`;
+    renderActiveEmployees();
+  });
+}
+
+function showAdmin() {
+  const s = getSettings();
+  document.getElementById('cutoff').value = s.cutoff;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('adminScreen').classList.remove('hidden');
+  renderAdminTable();
+  renderDTR();
+  renderHolidays();
+  renderActiveEmployees();
+}
+
+function renderActiveEmployees() {
+  const records = getRecords();
+  const employees = getEmployees();
+  const active = records.filter(r =>!r.timeOut);
+  if(active.length === 0) {
+    document.getElementById('activeEmployees').innerHTML = `<p class="text-gray-500">Walang naka-duty ngayon</p>`;
+    return;
+  }
+  document.getElementById('activeEmployees').innerHTML = active.map(r => {
+    const emp = employees.find(e => e.id === r.employeeId);
+    return `
+      <div class="flex justify-between items-center bg-[#262626] p-2 rounded-lg">
+        <div>
+          <p class="font-bold text-green-400">● ${emp?.name}</p>
+          <p class="text-xs text-gray-400">${r.shift} | In: ${r.timeIn}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-gray-400">GPS: ${r.gpsIn}</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function addEmployee() {
+  const name = document.getElementById('empName').value;
+  const rate = document.getElementById('empRate').value;
+  const ot = document.getElementById('empOT').value || 0;
+  const pass = document.getElementById('empPass').value;
+  if(!name ||!rate ||!pass) return alert('Fill up lahat!');
+  const employees = getEmployees();
+  employees.push({id: Date.now().toString(), name, rate: parseFloat(rate), otRate: parseFloat(ot), password: pass});
+  saveEmployees(employees);
+  renderAdminTable();
+  document.getElementById('empName').value = '';
+}
+
+function renderAdminTable() {
+  document.getElementById('empTable').innerHTML = getEmployees().map((e,i) => `
+    <tr class="border-b border-[#2a2a2a]"><td class="p-2">${e.name}</td><td>₱${e.rate}</td><td>₱${e.otRate}/hr</td><td>${e.password}</td>
+    <td>
+      <button onclick="editEmployee(${i})" class="text-blue-400 text-sm">Edit</button>
+      <button onclick="deleteEmployee(${i})" class="text-red-400 text-sm ml-2">Delete</button>
+    </td></tr>
+  `).join('');
+}
+
+function renderDTR() {
+  const records = getRecords().filter(r => inCutoff(r.date));
+  document.getElementById('dtrTable').innerHTML = records.map(r => {
+    const emp = getEmployees().find(e => e.id === r.employeeId);
+    const hol = isHoliday(r.date);
+    const hours = r.timeOut? ((new Date(`2000/01/01 ${r.timeOut}`) - new Date(`2000/01/01 ${r.timeIn}`))/1000/3600).toFixed(2) : '-';
+    const rowClass = hol? 'holiday-row' : '';
+    const type = hol? `${hol.name} x${hol.rate}` : 'Regular';
+    return `<tr class="border-b border-[#2a2a2a] ${rowClass}"><td class="p-2">${r.date}</td><td>${emp?.name}</td><td>${r.shift}</td><td>${r.timeIn}</td><td>${r.timeOut}</td><td class="text-xs">${r.gpsIn}</td><td>${type}</td><td>${hours}</td></tr>`;
+  }).join('');
+}
+
+function addHoliday() {
+  const date = document.getElementById('holDate').value;
+  const name = document.getElementById('holName').value;
+  const rate = document.getElementById('holRate').value;
+  if(!date ||!name ||!rate) return alert('Fill up lahat!');
+  const holidays = getHolidays();
+  holidays.push({date, name, rate: parseFloat(rate)});
+  saveHolidays(holidays);
+  renderHolidays();
+  renderDTR();
+}
+
+function renderHolidays() {
+  document.getElementById('holList').innerHTML = getHolidays().map((h,i) =>
+    `<span class="bg-red-900 px-2 py-1 rounded mr-2">${h.date} - ${h.name} x${h.rate} <button onclick="deleteHoliday(${i})" class="text-red-400">x</button></span>`
+  ).join('');
+}
+
+function deleteHoliday(i) {
+  const holidays = getHolidays();
+  holidays.splice(i,1);
+  saveHolidays(holidays);
+  renderHolidays();
+  renderDTR();
+}
+
+function editEmployee(index) {
+  const employees = getEmployees();
+  const emp = employees[index];
+  const newName = prompt("Bagong Pangalan:", emp.name);
+  const newRate = prompt("Bagong Rate:", emp.rate);
+  const newOT = prompt("Bagong OT Rate/Hr:", emp.otRate);
+  const newPass = prompt("Bagong Password:", emp.password);
+  if(newName && newRate && newPass) {
+    employees[index] = {...emp, name: newName, rate: parseFloat(newRate), otRate: parseFloat(newOT), password: newPass };
+    saveEmployees(employees);
+    renderAdminTable();
+  }
+}
+
+function deleteEmployee(index) {
+  if(confirm("Sigurado ka? Mabu-bura pati DTR nya.")) {
+    const employees = getEmployees();
+    const empId = employees[index].id;
+    employees.splice(index, 1);
+    saveEmployees(employees);
+    let records = getRecords().filter(r => r.employeeId!== empId);
+    saveRecords(records);
+    renderAdminTable();
+    renderDTR();
+    renderActiveEmployees();
+  }
+}
+
+function changeAdminPass() {
+  const currentPass = prompt("Ilagay mo current password:");
+  const savedPass = localStorage.getItem('adminPass') || 'admin123';
+  if(currentPass!== savedPass) return alert("Mali yung current password!");
+  const newPass = prompt("Ilagay mo bagong password:");
+  const confirmPass = prompt("Ulitin mo bagong password:");
+  if(newPass === confirmPass && newPass.length >= 4) {
+    localStorage.setItem('adminPass', newPass);
+    alert("Na-palitan na password!");
+  } else { alert("Hindi magkatugma o masyado maikli!"); }
+}
+
+function computePayroll() {
+  const s = getSettings();
+  let total = 0;
+  const employees = getEmployees();
+  const records = getRecords().filter(r => inCutoff(r.date) && r.timeOut);
+  let html = `<h3 class="font-bold text-orange-400">Payroll Summary - Cutoff ${s.cutoff}</h3>`;
+  employees.forEach(e => {
+    const empRecords = records.filter(r => r.employeeId === e.id);
+    let regPay = 0, otPay = 0, holPay = 0;
+    empRecords.forEach(r => {
+      const hours = (new Date(`2000/01/01 ${r.timeOut}`) - new Date(`2000/01/01 ${r.timeIn}`))/1000/3600;
+      const hol = isHoliday(r.date);
+      if(r.shift === 'OT') { otPay += hours * e.otRate * (hol? hol.rate : 1); }
+      else if(hol) { holPay += (hours/8) * e.rate * hol.rate; }
+      else { regPay += (hours/8) * e.rate; }
+    });
+    const gross = regPay + otPay + holPay;
+    const ded = computeDeductions(gross);
+    const net = gross - parseFloat(ded.total);
+    total += net;
+    html += `<p>${e.name}: Gross ₱${gross.toFixed(2)} - SSS ₱${ded.sss} Phil ₱${ded.phil} Pag ₱${ded.pagibig} = <b>Net ₱${net.toFixed(2)}</b></p>`;
+  });
+  html += `<p class="font-bold mt-2 text-orange-400">Grand Total Net: ₱${total.toFixed(2)}</p>`;
+  document.getElementById('payrollResult').innerHTML = html;
+}
+
+function exportCSV() {
+  const rows = [['Date','Employee','Shift','TimeIn','TimeOut','GPS In','Type','Hours']];
+  getRecords().filter(r => inCutoff(r.date)).forEach(r => {
+    const emp = getEmployees().find(e => e.id === r.employeeId);
+    const hol = isHoliday(r.date);
+    rows.push([r.date, emp?.name, r.shift, r.timeIn, r.timeOut, r.gpsIn, hol? hol.name : 'Regular', '']);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'DTR-Cutoff.csv';
+  a.click();
+}
+
+// AUTO REFRESH NG "ON DUTY" EVERY 5 SECONDS
+setInterval(renderActiveEmployees, 5000);
+
+// AUTO LOGIN CHECK PAG REFRESH
+window.onload = function() {
+  const savedRole = localStorage.getItem('loggedInRole');
+  const savedEmpId = localStorage.getItem('loggedInEmpId');
+
+  if(savedRole === 'admin') {
+    currentRole = 'admin';
+    showAdmin();
+  }
+  else if(savedRole === 'employee' && savedEmpId) {
+    currentRole = 'employee';
+    currentEmpId = savedEmpId;
+    showEmployee();
+  }
+}
+
+</script>
+</body>
+</html>
